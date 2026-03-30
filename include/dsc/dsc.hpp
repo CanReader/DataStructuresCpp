@@ -24,7 +24,18 @@
 #include "containers/tree_map.hpp"
 #include "containers/tree_set.hpp"
 #include "containers/priority_queue.hpp"
+#include "containers/trie.hpp"
+#include "containers/bitset.hpp"
+#include "containers/union_find.hpp"
+#include "containers/segment_tree.hpp"
+#include "containers/fenwick_tree.hpp"
+#include "containers/skip_list.hpp"
+#include "containers/sparse_set.hpp"
 
 // Algorithms
 #include "algorithms/sort.hpp"
 #include "algorithms/search.hpp"
+#include "algorithms/graph.hpp"
+#include "algorithms/string.hpp"
+#include "algorithms/math.hpp"
+#include "algorithms/sequence.hpp"
