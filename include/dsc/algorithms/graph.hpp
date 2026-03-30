@@ -33,6 +33,12 @@ template<typename T> constexpr T INF = static_cast<T>(-1) >> 1;  // max positive
 // ── BFS — Breadth-First Search ────────────────────────────────────────────────
 // Visits all vertices reachable from `src` in O(V + E).
 // Returns the distance (hop count) from src to each vertex, or INF<usize> if unreachable.
+/// @brief Performs breadth-first search from the source vertex.
+/// @tparam EdgeT Edge type (Edge or WeightedEdge<W>).
+/// @param graph Adjacency list representation of the graph.
+/// @param src Source vertex index.
+/// @return Array of distances from src to each vertex (INF<usize> if unreachable).
+/// @complexity O(V + E) where V is vertices and E is edges.
 template<typename EdgeT>
 Array<usize> bfs(const Array<Array<EdgeT>>& graph, usize src) {
     usize n = graph.size();
@@ -53,6 +59,12 @@ Array<usize> bfs(const Array<Array<EdgeT>>& graph, usize src) {
 }
 
 // BFS with parent tracking for path reconstruction
+/// @brief Performs breadth-first search with parent tracking for path reconstruction.
+/// @tparam EdgeT Edge type (Edge or WeightedEdge<W>).
+/// @param graph Adjacency list representation of the graph.
+/// @param src Source vertex index.
+/// @return Array of parent vertices for path reconstruction (INF<usize> for unreachable or src).
+/// @complexity O(V + E) where V is vertices and E is edges.
 template<typename EdgeT>
 Array<usize> bfs_parents(const Array<Array<EdgeT>>& graph, usize src) {
     usize n = graph.size();
@@ -76,6 +88,12 @@ Array<usize> bfs_parents(const Array<Array<EdgeT>>& graph, usize src) {
 }
 
 // Reconstruct path from src to dst given parent array; empty if unreachable
+/// @brief Reconstructs the path from source to destination using the parent array.
+/// @param parent Array of parent vertices from BFS.
+/// @param src Source vertex index.
+/// @param dst Destination vertex index.
+/// @return Array containing the path from src to dst, or empty array if unreachable.
+/// @complexity O(path length).
 Array<usize> reconstruct_path(const Array<usize>& parent, usize src, usize dst) {
     Array<usize> path;
     if (parent[dst] == INF<usize>) return path;
@@ -90,6 +108,13 @@ Array<usize> reconstruct_path(const Array<usize>& parent, usize src, usize dst) 
 // ── DFS — Depth-First Search ──────────────────────────────────────────────────
 // Iterative DFS to avoid stack overflow on deep graphs.
 // Returns vertices in DFS finish order.
+/// @brief Performs iterative depth-first search from the source vertex.
+/// @tparam EdgeT Edge type (Edge or WeightedEdge<W>).
+/// @param graph Adjacency list representation of the graph.
+/// @param src Source vertex index.
+/// @return Array of vertices in DFS finish order.
+/// @complexity O(V + E) where V is vertices and E is edges.
+/// @note Uses iterative approach to avoid stack overflow on deep graphs.
 template<typename EdgeT>
 Array<usize> dfs(const Array<Array<EdgeT>>& graph, usize src) {
     usize n = graph.size();
@@ -112,6 +137,12 @@ Array<usize> dfs(const Array<Array<EdgeT>>& graph, usize src) {
 // ── Topological Sort (Kahn's algorithm — BFS-based) ───────────────────────────
 // Valid only for DAGs. Returns vertices in topological order.
 // If the graph has a cycle, the returned array has fewer than n elements.
+/// @brief Performs topological sort using Kahn's algorithm (BFS-based).
+/// @tparam EdgeT Edge type (Edge or WeightedEdge<W>).
+/// @param graph Adjacency list representation of the directed acyclic graph (DAG).
+/// @return Array of vertices in topological order, or partial array if cycles exist.
+/// @pre Graph must be a DAG; cycles will result in incomplete ordering.
+/// @complexity O(V + E) where V is vertices and E is edges.
 template<typename EdgeT>
 Array<usize> topological_sort(const Array<Array<EdgeT>>& graph) {
     usize n = graph.size();
@@ -136,6 +167,13 @@ Array<usize> topological_sort(const Array<Array<EdgeT>>& graph) {
 // ── Dijkstra's shortest path ──────────────────────────────────────────────────
 // Single-source shortest paths on graphs with non-negative edge weights.
 // O((V + E) log V) using a 4-ary min-heap.
+/// @brief Computes single-source shortest paths using Dijkstra's algorithm.
+/// @tparam W Weight type (must support addition and comparison).
+/// @param graph Adjacency list with weighted edges.
+/// @param src Source vertex index.
+/// @return Array of shortest distances from src to each vertex (INF<W> if unreachable).
+/// @pre All edge weights must be non-negative.
+/// @complexity O((V + E) log V) where V is vertices and E is edges.
 template<typename W>
 Array<W> dijkstra(const Array<Array<WeightedEdge<W>>>& graph, usize src) {
     usize n = graph.size();
@@ -164,6 +202,13 @@ Array<W> dijkstra(const Array<Array<WeightedEdge<W>>>& graph, usize src) {
 template<typename W>
 struct DijkstraResult { Array<W> dist; Array<usize> parent; };
 
+/// @brief Computes single-source shortest paths with parent tracking for path reconstruction.
+/// @tparam W Weight type (must support addition and comparison).
+/// @param graph Adjacency list with weighted edges.
+/// @param src Source vertex index.
+/// @return DijkstraResult containing distances and parent array.
+/// @pre All edge weights must be non-negative.
+/// @complexity O((V + E) log V) where V is vertices and E is edges.
 template<typename W>
 DijkstraResult<W> dijkstra_parents(const Array<Array<WeightedEdge<W>>>& graph, usize src) {
     usize n = graph.size();
@@ -199,6 +244,14 @@ struct BFEdge { usize from, to; W weight; };
 template<typename W>
 struct BellmanFordResult { Array<W> dist; bool has_negative_cycle; };
 
+/// @brief Computes single-source shortest paths using Bellman-Ford algorithm.
+/// @tparam W Weight type (must support addition and comparison).
+/// @param edges Array of edges with from, to, and weight.
+/// @param n Number of vertices.
+/// @param src Source vertex index.
+/// @return BellmanFordResult containing distances and negative cycle flag.
+/// @complexity O(V * E) where V is vertices and E is edges.
+/// @note Can handle negative edge weights and detects negative cycles.
 template<typename W>
 BellmanFordResult<W> bellman_ford(const Array<BFEdge<W>>& edges, usize n, usize src) {
     Array<W> dist(n, INF<W>);
@@ -226,6 +279,13 @@ BellmanFordResult<W> bellman_ford(const Array<BFEdge<W>>& edges, usize n, usize 
 // ── Floyd-Warshall ────────────────────────────────────────────────────────────
 // All-pairs shortest paths. O(V³). Returns V×V distance matrix (flat array).
 // dist[u*n + v] = shortest path u→v; INF<W> if unreachable.
+/// @brief Computes all-pairs shortest paths using Floyd-Warshall algorithm.
+/// @tparam W Weight type (must support addition and comparison).
+/// @param n Number of vertices.
+/// @param edges Array of edges with from, to, and weight.
+/// @return Flat array representing n×n distance matrix (dist[u*n + v] = distance u→v).
+/// @complexity O(V³) where V is vertices.
+/// @note Can handle negative edge weights but not negative cycles.
 template<typename W>
 Array<W> floyd_warshall(usize n, const Array<BFEdge<W>>& edges) {
     Array<W> d(n * n, INF<W>);

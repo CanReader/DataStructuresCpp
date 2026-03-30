@@ -15,6 +15,13 @@ namespace dsc {
 // Avoids redundant comparisons by pre-computing the failure function.
 //
 // Returns array of starting positions (0-based) in text.
+/// @brief Searches for all occurrences of pattern in text using Knuth-Morris-Pratt algorithm.
+/// @param text Pointer to the text string.
+/// @param n Length of the text.
+/// @param pattern Pointer to the pattern string.
+/// @param m Length of the pattern.
+/// @return Array of starting positions (0-based) where pattern occurs in text.
+/// @complexity O(n + m) where n is text length and m is pattern length.
 inline Array<usize> kmp_search(const char* text,    usize n,
                                 const char* pattern, usize m) {
     Array<usize> result;
@@ -45,6 +52,14 @@ inline Array<usize> kmp_search(const char* text,    usize n,
 // ── Rabin-Karp rolling hash search ────────────────────────────────────────────
 // Find all occurrences of `pattern` in `text`. O(n + m) average, O(nm) worst.
 // Multiple patterns can be searched in one pass (not shown here).
+/// @brief Searches for all occurrences of pattern in text using Rabin-Karp algorithm.
+/// @param text Pointer to the text string.
+/// @param n Length of the text.
+/// @param pattern Pointer to the pattern string.
+/// @param m Length of the pattern.
+/// @return Array of starting positions (0-based) where pattern occurs in text.
+/// @complexity O(n + m) average, O(n * m) worst-case where n is text length and m is pattern length.
+/// @note Uses rolling hash to avoid recomputing hash for each window.
 inline Array<usize> rabin_karp_search(const char* text,    usize n,
                                        const char* pattern, usize m) {
     Array<usize> result;
@@ -86,6 +101,12 @@ inline Array<usize> rabin_karp_search(const char* text,    usize n,
 // Computes Z-array: Z[i] = length of the longest substring starting at text[i]
 // that is also a prefix of text. O(n).
 // Useful for pattern matching: concatenate pattern + '$' + text, compute Z-array.
+/// @brief Computes the Z-array for the string using Z-algorithm.
+/// @param s Pointer to the string.
+/// @param n Length of the string.
+/// @return Array where z[i] is the length of the longest substring starting at s[i] that matches a prefix of s.
+/// @complexity O(n) where n is the string length.
+/// @note z[0] is set to n by convention.
 inline Array<usize> z_function(const char* s, usize n) {
     Array<usize> z(n, 0u);
     z[0] = n;
@@ -99,6 +120,13 @@ inline Array<usize> z_function(const char* s, usize n) {
 }
 
 // Z-based pattern search — finds all occurrences of pattern in text
+/// @brief Searches for all occurrences of pattern in text using Z-algorithm.
+/// @param text Pointer to the text string.
+/// @param n Length of the text.
+/// @param pattern Pointer to the pattern string.
+/// @param m Length of the pattern.
+/// @return Array of starting positions (0-based) where pattern occurs in text.
+/// @complexity O(n + m) where n is text length and m is pattern length.
 inline Array<usize> z_search(const char* text,    usize n,
                                const char* pattern, usize m) {
     // Build concat = pattern + '$' + text
@@ -120,6 +148,14 @@ inline Array<usize> z_search(const char* text,    usize n,
 // ── Boyer-Moore-Horspool ───────────────────────────────────────────────────────
 // Practical fastest string search for long patterns. O(n/m) best case, O(nm) worst.
 // Uses the "bad character" skip table — 256-entry shift array.
+/// @brief Searches for all occurrences of pattern in text using Boyer-Moore-Horspool algorithm.
+/// @param text Pointer to the text string.
+/// @param n Length of the text.
+/// @param pattern Pointer to the pattern string.
+/// @param m Length of the pattern.
+/// @return Array of starting positions (0-based) where pattern occurs in text.
+/// @complexity O(n/m) best-case, O(n * m) worst-case where n is text length and m is pattern length.
+/// @note Most efficient for long patterns and large alphabets.
 inline Array<usize> bmh_search(const char* text,    usize n,
                                 const char* pattern, usize m) {
     Array<usize> result;
@@ -144,6 +180,14 @@ inline Array<usize> bmh_search(const char* text,    usize n,
 
 // ── Longest Common Subsequence (LCS) ─────────────────────────────────────────
 // Returns the length of the LCS of s1[0..n1) and s2[0..n2). O(n1 * n2).
+/// @brief Computes the length of the longest common subsequence between two strings.
+/// @param s1 Pointer to the first string.
+/// @param n1 Length of the first string.
+/// @param s2 Pointer to the second string.
+/// @param n2 Length of the second string.
+/// @return Length of the longest common subsequence.
+/// @complexity O(n1 * n2) where n1 and n2 are the string lengths.
+/// @note Space-optimized to O(min(n1, n2)) using rolling arrays.
 inline usize lcs_length(const char* s1, usize n1,
                          const char* s2, usize n2) {
     // Space-optimised: O(min(n1,n2)) using two rolling rows
@@ -164,6 +208,14 @@ inline usize lcs_length(const char* s1, usize n1,
 
 // ── Edit distance (Levenshtein) ───────────────────────────────────────────────
 // Minimum insert/delete/substitute ops to convert s1 into s2. O(n1 * n2).
+/// @brief Computes the edit distance (Levenshtein distance) between two strings.
+/// @param s1 Pointer to the first string.
+/// @param n1 Length of the first string.
+/// @param s2 Pointer to the second string.
+/// @param n2 Length of the second string.
+/// @return Minimum number of operations to transform s1 into s2.
+/// @complexity O(n1 * n2) where n1 and n2 are the string lengths.
+/// @note Operations are insert, delete, and substitute.
 inline usize edit_distance(const char* s1, usize n1,
                              const char* s2, usize n2) {
     Array<usize> prev(n2 + 1), curr(n2 + 1, 0u);
@@ -186,6 +238,12 @@ inline usize edit_distance(const char* s1, usize n1,
 // ── Manacher's algorithm — Longest Palindromic Substring ─────────────────────
 // Computes radius of the longest palindrome centred at each position. O(n).
 // Works on the transformed string '|a|b|a|' to handle even-length palindromes.
+/// @brief Computes palindrome radii for each position using Manacher's algorithm.
+/// @param s Pointer to the string.
+/// @param n Length of the string.
+/// @return Array where p[i]/2 is the radius of the longest palindrome centered at position i in the transformed string.
+/// @complexity O(n) where n is the string length.
+/// @note Handles both odd and even length palindromes.
 inline Array<usize> manacher(const char* s, usize n) {
     // Transform to '|a|b|a|b|' form
     usize tn = 2 * n + 1;
@@ -209,6 +267,12 @@ inline Array<usize> manacher(const char* s, usize n) {
 // ── Suffix Array (SA-IS light) ────────────────────────────────────────────────
 // O(n log n) suffix array construction via radix-sort-based approach.
 // Returns suffix array SA where SA[i] = start index of i-th lexicographic suffix.
+/// @brief Constructs a suffix array for the string using a prefix-doubling approach.
+/// @param s Pointer to the string.
+/// @param n Length of the string.
+/// @return Suffix array where sa[i] is the starting index of the i-th lexicographically smallest suffix.
+/// @complexity O(n log n) where n is the string length.
+/// @note Useful for string matching and other string algorithms.
 inline Array<usize> suffix_array(const char* s, usize n) {
     Array<usize> sa(n);
     for (usize i = 0; i < n; ++i) sa[i] = i;

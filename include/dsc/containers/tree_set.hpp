@@ -12,6 +12,21 @@ namespace dsc {
 // Ordered set backed by an AVL tree.
 // AVL provides stricter balance than Red-Black → faster average lookups.
 // O(log n) insert, erase, contains.
+
+/// @brief Ordered set backed by an AVL tree.
+///
+/// All keys are maintained in ascending order according to @p Cmp. The AVL
+/// balance invariant (height difference between sibling subtrees ≤ 1) is
+/// enforced after every insert and erase.
+///
+/// AVL trees are more strictly balanced than red-black trees (height ≤ 1.44 log₂ n),
+/// giving faster average lookups — ideal for read-heavy workloads.
+///
+/// Iterators traverse keys in ascending order (in-order traversal).
+///
+/// @tparam K   Key type. Must be comparable via @p Cmp.
+/// @tparam Cmp Binary predicate: `cmp(a, b)` returns `true` if `a < b`.
+///             Defaults to `operator<`.
 template<typename K,
          typename Cmp = decltype([](const K& a, const K& b){ return a < b; })>
 class TreeSet {
@@ -77,6 +92,12 @@ class TreeSet {
 
 public:
     // ── Iterator (in-order) ───────────────────────────────────────────────────
+
+    /// @brief Bidirectional iterator that traverses keys in ascending order.
+    ///
+    /// Incrementing visits the in-order successor; decrementing visits the
+    /// in-order predecessor. Dereferencing yields a `const K&`.
+    /// Invalidated only by erasing the node currently pointed to.
     struct Iterator : BidirectionalIterator<Iterator, const K> {
         Node* n;
         explicit Iterator(Node* n) noexcept : n(n) {}
@@ -90,25 +111,64 @@ public:
     using const_iterator = Iterator;
 
     // ── Construction ─────────────────────────────────────────────────────────
+
+    /// @brief Default constructor. Creates an empty set.
+    /// @complexity O(1).
     TreeSet() : root_(nullptr), size_(0) {}
+
+    /// @brief Copy constructor. Deep-copies all keys from @p o.
+    /// @param o Source set to copy from.
+    /// @complexity O(n log n).
     TreeSet(const TreeSet& o) : root_(nullptr), size_(0) { for (const auto& k : o) insert(k); }
+
+    /// @brief Move constructor. Transfers ownership of the tree from @p o.
+    /// @param o Source set to move from. Left empty after the operation.
+    /// @complexity O(1).
     TreeSet(TreeSet&& o) noexcept : root_(o.root_), size_(o.size_) { o.root_=nullptr; o.size_=0; }
+
+    /// @brief Destructor. Recursively destroys all nodes.
+    /// @complexity O(n).
     ~TreeSet() { destroy(root_); }
 
+    /// @brief Copy-assignment operator.
+    /// @return Reference to `*this`.
+    /// @complexity O(n log n).
     TreeSet& operator=(const TreeSet& o) { if (this!=&o){ TreeSet t(o); *this=traits::move(t); } return *this; }
+
+    /// @brief Move-assignment operator.
+    /// @return Reference to `*this`.
+    /// @complexity O(n) to destroy current tree; O(1) for the transfer.
     TreeSet& operator=(TreeSet&& o) noexcept {
         if (this!=&o){ destroy(root_); root_=o.root_; size_=o.size_; o.root_=nullptr; o.size_=0; }
         return *this;
     }
 
     // ── Capacity ──────────────────────────────────────────────────────────────
+
+    /// @brief Returns the number of keys in the set.
+    /// @complexity O(1).
     [[nodiscard]] usize size()  const noexcept { return size_; }
+
+    /// @brief Returns `true` if the set contains no keys.
+    /// @complexity O(1).
     [[nodiscard]] bool  empty() const noexcept { return size_ == 0; }
 
     // ── Modifiers ─────────────────────────────────────────────────────────────
+
+    /// @brief Inserts @p k into the set if it is not already present.
+    /// @return `true` if newly inserted; `false` if the key already existed.
+    /// @complexity O(log n).
     bool insert(const K& k) { return ins_impl(k); }
+
+    /// @overload Move-inserts the key.
     bool insert(K&& k)      { return ins_impl(traits::move(k)); }
 
+    /// @brief Removes the key @p k from the set.
+    ///
+    /// If the node has two children, it is replaced with its in-order successor.
+    /// AVL rebalancing is performed bottom-up after removal.
+    /// @return `true` if the key was found and removed; `false` otherwise.
+    /// @complexity O(log n).
     bool erase(const K& k) noexcept {
         Node* n = find_node(k);
         if (!n) return false;
@@ -116,22 +176,35 @@ public:
         return true;
     }
 
+    /// @brief Removes all keys from the set.
+    /// @complexity O(n).
     void clear() noexcept { destroy(root_); root_ = nullptr; size_ = 0; }
 
     // ── Lookup ────────────────────────────────────────────────────────────────
+
+    /// @brief Returns `true` if @p k is present in the set.
+    /// @complexity O(log n).
     [[nodiscard]] bool contains(const K& k) const noexcept { return find_node(k) != nullptr; }
 
+    /// @brief Returns a pointer to the smallest key, or `none` if empty.
+    /// @complexity O(log n).
     [[nodiscard]] Optional<const K*> min_key() const noexcept {
         if (!root_) return none_of<const K*>();
         return some<const K*>(&leftmost(root_)->key);
     }
+
+    /// @brief Returns a pointer to the largest key, or `none` if empty.
+    /// @complexity O(log n).
     [[nodiscard]] Optional<const K*> max_key() const noexcept {
         if (!root_) return none_of<const K*>();
         return some<const K*>(&rightmost(root_)->key);
     }
 
     // ── Iterators ─────────────────────────────────────────────────────────────
+
+    /// @brief Returns an iterator to the smallest key.
     Iterator begin() const noexcept { return Iterator(leftmost(root_)); }
+    /// @brief Returns a past-the-end iterator.
     Iterator end()   const noexcept { return Iterator(nullptr); }
 
 private:

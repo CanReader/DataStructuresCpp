@@ -22,6 +22,10 @@ namespace dsc {
 //   • Lock-free variants are simple (no rotations to synchronise).
 //   • Cache-friendly sequential scan at level 0.
 //   • Simpler implementation while achieving the same asymptotic bounds.
+/// @brief Probabilistic sorted map using skip lists for efficient ordered operations.
+/// @tparam K Key type.
+/// @tparam V Value type.
+/// @tparam Cmp Comparator type (default is less-than).
 template<typename K, typename V,
          typename Cmp = decltype([](const K& a, const K& b){ return a < b; })>
 class SkipList {
@@ -71,6 +75,8 @@ class SkipList {
     }
 
 public:
+    /// @brief Constructs an empty skip list with the given random seed.
+    /// @param seed Random seed for level generation (default is a fixed value).
     explicit SkipList(u64 seed = 0xdeadbeefcafe1337ULL) : level_(1), size_(0), seed_(seed) {
         void* mem = ::operator new(sizeof(Node) + MAX_LEVELS * sizeof(Node*));
         head_ = static_cast<Node*>(mem);
@@ -78,16 +84,24 @@ public:
         for (usize i = 0; i < MAX_LEVELS; ++i) head_->forward[i] = nullptr;
     }
 
+    /// @brief Destructor. Destroys all nodes.
     ~SkipList() {
         Node* cur = head_->forward[0];
         while (cur) { Node* next = cur->forward[0]; Node::destroy(cur); cur = next; }
         ::operator delete(head_);
     }
 
+    /// @brief Copy constructor is deleted.
     SkipList(const SkipList&)            = delete;
+    /// @brief Copy assignment is deleted.
     SkipList& operator=(const SkipList&) = delete;
 
     // ── Insert ────────────────────────────────────────────────────────────────
+    /// @brief Inserts a key-value pair into the skip list.
+    /// @param k The key to insert.
+    /// @param v The value to associate with the key.
+    /// @return true if inserted, false if key already existed (value updated).
+    /// @complexity O(log n) expected
     bool insert(const K& k, const V& v) {
         Node* update[MAX_LEVELS];
         Node* cur = head_;
@@ -119,6 +133,10 @@ public:
     }
 
     // ── Erase ─────────────────────────────────────────────────────────────────
+    /// @brief Removes the key-value pair with the given key.
+    /// @param k The key to remove.
+    /// @return true if removed, false if key not found.
+    /// @complexity O(log n) expected
     bool erase(const K& k) noexcept {
         Node* update[MAX_LEVELS];
         Node* cur = head_;
@@ -143,6 +161,10 @@ public:
     }
 
     // ── Lookup ────────────────────────────────────────────────────────────────
+    /// @brief Finds the value associated with the given key.
+    /// @param k The key to search for.
+    /// @return Optional pointer to the value if found, none otherwise.
+    /// @complexity O(log n) expected
     [[nodiscard]] Optional<V*> find(const K& k) noexcept {
         Node* cur = head_;
         for (usize i = level_; i-- > 0;)
@@ -154,11 +176,19 @@ public:
         return none_of<V*>();
     }
 
+    /// @brief Checks if the key exists in the skip list.
+    /// @param k The key to check.
+    /// @return true if the key exists, false otherwise.
+    /// @complexity O(log n) expected
     [[nodiscard]] bool contains(const K& k) noexcept {
         return find(k).has_value();
     }
 
+    /// @brief Returns the number of elements in the skip list.
+    /// @return The size.
     [[nodiscard]] usize size()  const noexcept { return size_; }
+    /// @brief Checks if the skip list is empty.
+    /// @return true if empty, false otherwise.
     [[nodiscard]] bool  empty() const noexcept { return size_ == 0; }
 
     // ── Iterator (level-0 forward scan) ──────────────────────────────────────

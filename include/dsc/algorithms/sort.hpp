@@ -24,6 +24,14 @@ struct Less {
 
 // ── Insertion sort ────────────────────────────────────────────────────────────
 // Best for small n (≤ 16) or nearly-sorted data.
+/// @brief Sorts the range [first, last) using insertion sort.
+/// @tparam T Element type.
+/// @tparam Cmp Comparator type. Defaults to `Less` (ascending order).
+/// @param first Pointer to the first element of the range.
+/// @param last Pointer to one past the last element of the range.
+/// @param cmp Comparator functor.
+/// @complexity O(n²) worst-case, O(n) best-case for nearly sorted data.
+/// @note Suitable for small ranges or data that is already mostly sorted.
 template<typename T, typename Cmp = Less>
 void insertion_sort(T* first, T* last, Cmp cmp = {}) noexcept {
     for (T* i = first + 1; i < last; ++i) {
@@ -127,6 +135,14 @@ void introsort_impl(T* first, T* last, usize depth_limit, Cmp& cmp) noexcept {
 // ── Introsort ─────────────────────────────────────────────────────────────────
 // Worst-case O(n log n), average O(n log n), best O(n).
 // Identical to the algorithm used in libstdc++ std::sort.
+/// @brief Sorts the range [first, last) using introsort (hybrid quicksort + heapsort + insertionsort).
+/// @tparam T Element type.
+/// @tparam Cmp Comparator type. Defaults to `Less` (ascending order).
+/// @param first Pointer to the first element of the range.
+/// @param last Pointer to one past the last element of the range.
+/// @param cmp Comparator functor.
+/// @complexity O(n log n) worst-case, O(n log n) average, O(n) best-case.
+/// @note Uses quicksort with heapsort fallback and insertionsort for small ranges.
 template<typename T, typename Cmp = Less>
 void introsort(T* first, T* last, Cmp cmp = {}) noexcept {
     if (last - first < 2) return;
@@ -136,18 +152,43 @@ void introsort(T* first, T* last, Cmp cmp = {}) noexcept {
 }
 
 // Convenience alias
+/// @brief Alias for `introsort`. Sorts the range [first, last) in ascending order.
+/// @tparam T Element type.
+/// @tparam Cmp Comparator type. Defaults to `Less` (ascending order).
+/// @param first Pointer to the first element of the range.
+/// @param last Pointer to one past the last element of the range.
+/// @param cmp Comparator functor.
+/// @complexity O(n log n) worst-case.
+/// @see introsort
 template<typename T, typename Cmp = Less>
 void sort(T* first, T* last, Cmp cmp = {}) noexcept {
     introsort(first, last, cmp);
 }
 
 // ── Heap sort (standalone) ────────────────────────────────────────────────────
+/// @brief Sorts the range [first, last) using heap sort.
+/// @tparam T Element type.
+/// @tparam Cmp Comparator type. Defaults to `Less` (ascending order).
+/// @param first Pointer to the first element of the range.
+/// @param last Pointer to one past the last element of the range.
+/// @param cmp Comparator functor.
+/// @complexity O(n log n) worst-case.
+/// @note In-place sorting algorithm with O(1) auxiliary space.
 template<typename T, typename Cmp = Less>
 void heap_sort(T* first, T* last, Cmp cmp = {}) noexcept {
     detail::heap_sort_impl(first, last, cmp);
 }
 
 // ── Merge sort (stable) ───────────────────────────────────────────────────────
+/// @brief Sorts the range [first, last) using stable merge sort.
+/// @tparam T Element type.
+/// @tparam Cmp Comparator type. Defaults to `Less` (ascending order).
+/// @param first Pointer to the first element of the range.
+/// @param last Pointer to one past the last element of the range.
+/// @param cmp Comparator functor.
+/// @complexity O(n log n) worst-case.
+/// @note Stable sorting algorithm that preserves the relative order of equal elements.
+///       Uses O(n) auxiliary space.
 template<typename T, typename Cmp = Less>
 void merge_sort(T* first, T* last, Cmp cmp = {}) {
     isize n = last - first;
@@ -183,6 +224,13 @@ void merge_sort(T* first, T* last, Cmp cmp = {}) {
 
 // ── Counting sort ─────────────────────────────────────────────────────────────
 // O(n + k). Only valid for non-negative integer types within [min, max].
+/// @brief Sorts the range [first, last) using counting sort.
+/// @tparam T Element type. Must be an integral type.
+/// @param first Pointer to the first element of the range.
+/// @param last Pointer to one past the last element of the range.
+/// @complexity O(n + k) where k is the range of values.
+/// @pre Elements must be non-negative integers.
+/// @note Only suitable for small ranges of integer values.
 template<typename T>
 void counting_sort(T* first, T* last) {
     static_assert(traits::is_integral_v<T>, "counting_sort requires integer type");
@@ -211,6 +259,13 @@ void counting_sort(T* first, T* last) {
 // ── LSD Radix sort ────────────────────────────────────────────────────────────
 // O(nw) for unsigned integer types. w = sizeof(T) * 8 / 8 passes.
 // Stable. Very fast for large arrays of integers.
+/// @brief Sorts the range [first, last) using least-significant-digit (LSD) radix sort.
+/// @tparam T Element type. Must be an unsigned integral type.
+/// @param first Pointer to the first element of the range.
+/// @param last Pointer to one past the last element of the range.
+/// @complexity O(n * w) where w is the number of bytes in T.
+/// @pre Elements must be unsigned integers.
+/// @note Stable sorting algorithm, very efficient for large arrays of integers.
 template<typename T>
 void radix_sort(T* first, T* last) {
     static_assert(traits::is_unsigned_v<T>, "radix_sort requires unsigned integer type");

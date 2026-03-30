@@ -16,6 +16,12 @@ namespace dsc {
 template<typename T>
 struct SubarrayResult { T sum; usize lo; usize hi; };
 
+/// @brief Finds the maximum subarray sum using Kadane's algorithm.
+/// @tparam T Element type.
+/// @param arr Input array.
+/// @param n Array size.
+/// @return SubarrayResult containing the maximum sum and indices [lo, hi].
+/// @complexity O(n).
 template<typename T>
 [[nodiscard]] SubarrayResult<T> max_subarray(const T* arr, usize n) noexcept {
     if (n == 0) return {T{}, 0, 0};
@@ -31,6 +37,14 @@ template<typename T>
 
 // ── Two-pointer: sorted pair with target sum ──────────────────────────────────
 // Find pair (i, j) s.t. arr[i]+arr[j] == target in sorted array. O(n).
+/// @brief Finds a pair with target sum in a sorted array using two pointers.
+/// @tparam T Element type.
+/// @param arr Sorted input array.
+/// @param n Array size.
+/// @param target Target sum.
+/// @return Optional containing indices [i, j] where arr[i] + arr[j] == target, or none.
+/// @pre Array must be sorted in ascending order.
+/// @complexity O(n).
 template<typename T>
 [[nodiscard]] Optional<usize[2]> two_sum_sorted(const T* arr, usize n, T target) noexcept {
     usize l = 0, r = n - 1;
@@ -50,6 +64,13 @@ template<typename T>
 
 // ── Sliding window maximum ────────────────────────────────────────────────────
 // For each window of size k, find the maximum. O(n) using monotone deque.
+/// @brief Computes sliding window maximums for each window of size k.
+/// @tparam T Element type.
+/// @param arr Input array.
+/// @param n Array size.
+/// @param k Window size.
+/// @return Array of maximums for each window.
+/// @complexity O(n).
 template<typename T>
 Array<T> sliding_window_max(const T* arr, usize n, usize k) {
     Array<T>     result;
@@ -70,6 +91,13 @@ Array<T> sliding_window_max(const T* arr, usize n, usize k) {
 }
 
 // ── Sliding window minimum ─────────────────────────────────────────────────────
+/// @brief Computes sliding window minimums for each window of size k.
+/// @tparam T Element type.
+/// @param arr Input array.
+/// @param n Array size.
+/// @param k Window size.
+/// @return Array of minimums for each window.
+/// @complexity O(n).
 template<typename T>
 Array<T> sliding_window_min(const T* arr, usize n, usize k) {
     Array<T>     result;
@@ -87,6 +115,12 @@ Array<T> sliding_window_min(const T* arr, usize n, usize k) {
 // ── Next permutation ──────────────────────────────────────────────────────────
 // Rearranges arr in-place to the next lexicographic permutation. O(n).
 // Returns false if already the last permutation (sorted descending).
+/// @brief Generates the next permutation in lexicographic order.
+/// @tparam T Element type.
+/// @param first Pointer to the first element of the range.
+/// @param last Pointer to one past the last element of the range.
+/// @return true if a next permutation exists, false if already the last.
+/// @complexity O(n).
 template<typename T>
 bool next_permutation(T* first, T* last) noexcept {
     if (last - first < 2) return false;
@@ -108,6 +142,12 @@ bool next_permutation(T* first, T* last) noexcept {
 }
 
 // ── Previous permutation ──────────────────────────────────────────────────────
+/// @brief Generates the previous permutation in lexicographic order.
+/// @tparam T Element type.
+/// @param first Pointer to the first element of the range.
+/// @param last Pointer to one past the last element of the range.
+/// @return true if a previous permutation exists, false if already the first.
+/// @complexity O(n).
 template<typename T>
 bool prev_permutation(T* first, T* last) noexcept {
     if (last - first < 2) return false;
@@ -129,6 +169,13 @@ bool prev_permutation(T* first, T* last) noexcept {
 
 // ── Fisher-Yates shuffle ──────────────────────────────────────────────────────
 // Uniform random shuffle in O(n). Needs an rng function: usize(usize limit).
+/// @brief Shuffles the range [first, last) using Fisher-Yates algorithm.
+/// @tparam T Element type.
+/// @tparam Rng Random number generator type.
+/// @param first Pointer to the first element of the range.
+/// @param last Pointer to one past the last element of the range.
+/// @param rng Random number generator function that takes a limit and returns usize in [0, limit).
+/// @complexity O(n).
 template<typename T, typename Rng>
 void shuffle(T* first, T* last, Rng&& rng) noexcept {
     usize n = static_cast<usize>(last - first);
@@ -141,6 +188,13 @@ void shuffle(T* first, T* last, Rng&& rng) noexcept {
 // ── Boyer-Moore majority vote ──────────────────────────────────────────────────
 // Find candidate for majority element (appears > n/2 times) in O(n), O(1) space.
 // Returns the candidate; caller must verify if actual majority is required.
+/// @brief Finds a candidate for the majority element using Boyer-Moore voting algorithm.
+/// @tparam T Element type.
+/// @param arr Input array.
+/// @param n Array size.
+/// @return Candidate for majority element (appears more than n/2 times).
+/// @complexity O(n), O(1) space.
+/// @note Caller must verify if the candidate is actually a majority.
 template<typename T>
 [[nodiscard]] T majority_candidate(const T* arr, usize n) noexcept {
     T    candidate = arr[0];
@@ -155,6 +209,12 @@ template<typename T>
 
 // ── Longest Increasing Subsequence (LIS) ────────────────────────────────────
 // Returns the length of the LIS. O(n log n) using patience sorting.
+/// @brief Computes the length of the longest increasing subsequence.
+/// @tparam T Element type.
+/// @param arr Input array.
+/// @param n Array size.
+/// @return Length of the longest increasing subsequence.
+/// @complexity O(n log n).
 template<typename T>
 [[nodiscard]] usize lis_length(const T* arr, usize n) noexcept {
     Array<T> tails;  // tails[i] = smallest tail of all increasing subseqs of length i+1
@@ -175,6 +235,12 @@ template<typename T>
 // ── Monotone stack: next greater element ─────────────────────────────────────
 // For each element, find the index of the next greater element. O(n).
 // Returns n if no greater element exists to the right.
+/// @brief Finds the index of the next greater element for each position.
+/// @tparam T Element type.
+/// @param arr Input array.
+/// @param n Array size.
+/// @return Array where result[i] is the index of the next greater element after i, or n if none.
+/// @complexity O(n).
 template<typename T>
 Array<usize> next_greater(const T* arr, usize n) {
     Array<usize> result(n, n);
@@ -190,6 +256,12 @@ Array<usize> next_greater(const T* arr, usize n) {
 }
 
 // ── Monotone stack: previous greater element ──────────────────────────────────
+/// @brief Finds the index of the previous greater element for each position.
+/// @tparam T Element type.
+/// @param arr Input array.
+/// @param n Array size.
+/// @return Array where result[i] is the index of the previous greater element before i, or n if none.
+/// @complexity O(n).
 template<typename T>
 Array<usize> prev_greater(const T* arr, usize n) {
     Array<usize> result(n, n);
@@ -206,6 +278,11 @@ Array<usize> prev_greater(const T* arr, usize n) {
 
 // ── Largest rectangle in histogram ────────────────────────────────────────────
 // O(n) using monotone stack. Classic.
+/// @brief Computes the area of the largest rectangle in a histogram.
+/// @param heights Array of bar heights.
+/// @param n Number of bars.
+/// @return Area of the largest rectangle.
+/// @complexity O(n).
 [[nodiscard]] inline u64 largest_rect_histogram(const u64* heights, usize n) noexcept {
     Stack<usize> stk;
     u64 max_area = 0;
@@ -224,6 +301,12 @@ Array<usize> prev_greater(const T* arr, usize n) {
 
 // ── Dutch National Flag (3-way partition) ────────────────────────────────────
 // Partition arr into [< pivot, == pivot, > pivot] in O(n), O(1) space.
+/// @brief Partitions the array into three parts: less than, equal to, and greater than pivot.
+/// @tparam T Element type.
+/// @param arr Input array (modified in-place).
+/// @param n Array size.
+/// @param pivot Pivot value.
+/// @complexity O(n), O(1) space.
 template<typename T>
 void dutch_national_flag(T* arr, usize n, const T& pivot) noexcept {
     usize lo = 0, mid = 0, hi = n;
@@ -236,6 +319,12 @@ void dutch_national_flag(T* arr, usize n, const T& pivot) noexcept {
 
 // ── Rotate array left by k positions ──────────────────────────────────────────
 // Uses the three-reverse trick. O(n), O(1) space.
+/// @brief Rotates the array left by k positions in-place.
+/// @tparam T Element type.
+/// @param arr Input array (modified in-place).
+/// @param n Array size.
+/// @param k Number of positions to rotate.
+/// @complexity O(n), O(1) space.
 template<typename T>
 void rotate_left(T* arr, usize n, usize k) noexcept {
     k %= n;
@@ -250,6 +339,13 @@ void rotate_left(T* arr, usize n, usize k) noexcept {
 
 // ── Remove duplicates from sorted array ───────────────────────────────────────
 // Returns new length (elements after are unspecified). O(n).
+/// @brief Removes duplicates from a sorted array in-place.
+/// @tparam T Element type.
+/// @param arr Sorted input array (modified in-place).
+/// @param n Array size.
+/// @return New length of the array after removing duplicates.
+/// @pre Array must be sorted.
+/// @complexity O(n).
 template<typename T>
 [[nodiscard]] usize remove_duplicates(T* arr, usize n) noexcept {
     if (n == 0) return 0;
@@ -260,6 +356,14 @@ template<typename T>
 }
 
 // ── Merge two sorted arrays into dst ──────────────────────────────────────────
+/// @brief Merges two sorted arrays into a destination array.
+/// @tparam T Element type.
+/// @param a First sorted array.
+/// @param na Size of first array.
+/// @param b Second sorted array.
+/// @param nb Size of second array.
+/// @param dst Destination array (must have size na + nb).
+/// @complexity O(na + nb).
 template<typename T>
 void merge_sorted(const T* a, usize na, const T* b, usize nb, T* dst) noexcept {
     usize i = 0, j = 0, k = 0;
@@ -273,6 +377,12 @@ void merge_sorted(const T* a, usize na, const T* b, usize nb, T* dst) noexcept {
 
 // ── Inversion count using merge sort ──────────────────────────────────────────
 // Count pairs (i, j) with i < j and arr[i] > arr[j]. O(n log n).
+/// @brief Counts the number of inversions in the array using merge sort.
+/// @tparam T Element type.
+/// @param arr Input array (modified in-place during sorting).
+/// @param n Array size.
+/// @return Number of inversions.
+/// @complexity O(n log n).
 template<typename T>
 u64 count_inversions(T* arr, usize n) {
     if (n < 2) return 0;
@@ -299,6 +409,12 @@ u64 count_inversions(T* arr, usize n) {
 // Space-optimised to O(W) using rolling array.
 struct KnapsackItem { u64 weight; u64 value; };
 
+/// @brief Solves the 0/1 knapsack problem.
+/// @param items Array of items with weight and value.
+/// @param n Number of items.
+/// @param capacity Knapsack capacity.
+/// @return Maximum value that can be achieved.
+/// @complexity O(n * capacity), O(capacity) space.
 [[nodiscard]] inline u64 knapsack_01(const KnapsackItem* items, usize n, u64 capacity) {
     Array<u64> dp(static_cast<usize>(capacity) + 1, 0ULL);
     for (usize i = 0; i < n; ++i) {
@@ -313,6 +429,12 @@ struct KnapsackItem { u64 weight; u64 value; };
 
 // ── Coin change — minimum coins ────────────────────────────────────────────────
 // Returns minimum number of coins to make `amount`, or usize(-1) if impossible.
+/// @brief Finds the minimum number of coins needed to make a given amount.
+/// @param coins Array of coin denominations.
+/// @param n_coins Number of coin types.
+/// @param amount Target amount.
+/// @return Minimum number of coins, or usize(-1) if impossible.
+/// @complexity O(amount * n_coins).
 [[nodiscard]] inline usize coin_change(const u64* coins, usize n_coins, u64 amount) {
     const usize INF_VAL = usize(-1) >> 1;
     Array<usize> dp(static_cast<usize>(amount) + 1, INF_VAL);

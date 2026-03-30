@@ -25,6 +25,22 @@ namespace dsc {
 // Complexity (expected):
 //   insert / erase / find : O(1) amortized
 //   Memory overhead       : ~1.14× at 87.5 % load (best-in-class open addressing)
+
+/// @brief Open-addressing hash map using Robin Hood hashing with backward-shift deletion.
+///
+/// Each slot stores a probe sequence length (PSL). On collision, the element with
+/// the shorter PSL is displaced ("stolen from") and the longer-PSL element takes its
+/// place. This keeps PSL variance low, yielding < 5 probes per lookup at 87.5% load.
+///
+/// Deletion uses backward-shift rather than tombstones, so load factor never
+/// inflates from accumulated deletes and lookups remain fast at all times.
+///
+/// Capacity is always a power of two — modulo wrapping is a single bitmask.
+///
+/// @tparam K  Key type. Must be hashable by @p H and equality-comparable by @p Eq.
+/// @tparam V  Mapped value type.
+/// @tparam H  Hash functor. Defaults to `Hash<K>` (FNV-1a + Fibonacci mixing).
+/// @tparam Eq Equality functor. Defaults to `KeyEqual<K>` (operator==).
 template<typename K, typename V,
          typename H  = Hash<K>,
          typename Eq = KeyEqual<K>>
@@ -46,70 +62,105 @@ class HashMap {
 
 public:
     // ── Pair ──────────────────────────────────────────────────────────────────
+
+    /// @brief Reference pair returned by iterators — key is const, value is mutable.
     struct Pair {
         const K& key;
         V&       value;
     };
 
+    /// @brief Const reference pair returned by const iterators.
     struct ConstPair {
         const K& key;
         const V& value;
     };
 
     // ── Iterator ──────────────────────────────────────────────────────────────
+
+    /// @brief Forward iterator over all key-value pairs in the map.
+    ///
+    /// Traverses the flat slot array, skipping empty slots. Iteration order is
+    /// unspecified (depends on hash distribution). Invalidated by any insert or
+    /// rehash operation.
     struct Iterator {
         Slot* slots;
         usize cap;
         usize idx;
 
+        /// @brief Advances internal index past any empty slots.
         void advance_to_filled() noexcept {
             while (idx < cap && slots[idx].psl == EMPTY_PSL) ++idx;
         }
 
+        /// @brief Dereferences to a `Pair` of `{const K& key, V& value}`.
         Pair operator*() noexcept { return {slots[idx].key(), slots[idx].val()}; }
 
+        /// @brief Pre-increment. Moves to the next occupied slot.
         Iterator& operator++() noexcept { ++idx; advance_to_filled(); return *this; }
+        /// @brief Post-increment.
         Iterator  operator++(int) noexcept { auto t = *this; ++(*this); return t; }
         bool operator==(Iterator o) const noexcept { return idx == o.idx; }
         bool operator!=(Iterator o) const noexcept { return idx != o.idx; }
     };
 
+    /// @brief Const forward iterator over all key-value pairs in the map.
     struct ConstIterator {
         const Slot* slots;
         usize cap;
         usize idx;
 
+        /// @brief Advances internal index past any empty slots.
         void advance_to_filled() noexcept {
             while (idx < cap && slots[idx].psl == EMPTY_PSL) ++idx;
         }
 
+        /// @brief Dereferences to a `ConstPair` of `{const K& key, const V& value}`.
         ConstPair operator*() const noexcept { return {slots[idx].key(), slots[idx].val()}; }
 
+        /// @brief Pre-increment. Moves to the next occupied slot.
         ConstIterator& operator++() noexcept { ++idx; advance_to_filled(); return *this; }
+        /// @brief Post-increment.
         ConstIterator  operator++(int) noexcept { auto t = *this; ++(*this); return t; }
         bool operator==(ConstIterator o) const noexcept { return idx == o.idx; }
         bool operator!=(ConstIterator o) const noexcept { return idx != o.idx; }
     };
 
     // ── Construction ─────────────────────────────────────────────────────────
+
+    /// @brief Default constructor. Allocates an initial slot array of capacity 8.
+    /// @complexity O(1).
     HashMap() : slots_(nullptr), cap_(0), size_(0) { init_slots(INITIAL_CAP); }
 
+    /// @brief Copy constructor. Deep-copies all entries from @p o.
+    /// @param o Source map to copy from.
+    /// @complexity O(n).
     HashMap(const HashMap& o) : slots_(nullptr), cap_(0), size_(0) {
         init_slots(o.cap_);
         for (auto [k, v] : o) insert(k, v);
     }
 
+    /// @brief Move constructor. Transfers ownership of the slot array from @p o.
+    /// @param o Source map to move from. Left empty after the operation.
+    /// @complexity O(1).
     HashMap(HashMap&& o) noexcept : slots_(o.slots_), cap_(o.cap_), size_(o.size_) {
         o.slots_ = nullptr; o.cap_ = o.size_ = 0;
     }
 
+    /// @brief Destructor. Destroys all keys/values and releases the allocation.
+    /// @complexity O(n).
     ~HashMap() { destroy_all(); free_slots(); }
 
+    /// @brief Copy-assignment operator. Replaces contents with a copy of @p o.
+    /// @return Reference to `*this`.
+    /// @complexity O(n).
     HashMap& operator=(const HashMap& o) {
         if (this != &o) { HashMap tmp(o); *this = traits::move(tmp); }
         return *this;
     }
 
+    /// @brief Move-assignment operator. Transfers ownership from @p o.
+    /// @return Reference to `*this`.
+    /// @complexity O(n) to destroy current elements; O(1) for the transfer.
     HashMap& operator=(HashMap&& o) noexcept {
         if (this != &o) {
             destroy_all(); free_slots();
@@ -120,17 +171,34 @@ public:
     }
 
     // ── Capacity ──────────────────────────────────────────────────────────────
+
+    /// @brief Returns the number of key-value pairs currently stored.
+    /// @complexity O(1).
     [[nodiscard]] usize size()  const noexcept { return size_; }
+
+    /// @brief Returns `true` if the map contains no entries.
+    /// @complexity O(1).
     [[nodiscard]] bool  empty() const noexcept { return size_ == 0; }
 
     // ── Insert / update ───────────────────────────────────────────────────────
-    // Returns true if a new element was inserted; false if key already existed.
+
+    /// @brief Inserts a key-value pair if the key is not already present.
+    /// @return `true` if a new entry was created; `false` if key already existed.
+    /// @note Triggers a capacity-doubling rehash when the load factor exceeds 87.5%.
+    /// @complexity O(1) amortised.
     bool insert(const K& k, const V& v) { return emplace_impl(k, v); }
+    /// @overload Move-inserts the value.
     bool insert(const K& k, V&& v)      { return emplace_impl(k, traits::move(v)); }
+    /// @overload Move-inserts the key.
     bool insert(K&& k,      const V& v) { return emplace_impl(traits::move(k), v); }
+    /// @overload Move-inserts both key and value.
     bool insert(K&& k,      V&& v)      { return emplace_impl(traits::move(k), traits::move(v)); }
 
-    // Insert-or-assign: always writes the value, returns true if newly inserted.
+    /// @brief Inserts or updates a key-value pair.
+    ///
+    /// If @p k already exists the mapped value is replaced with @p v.
+    /// @return `true` if a new entry was created; `false` if an existing value was updated.
+    /// @complexity O(1) amortised.
     bool insert_or_assign(const K& k, V v) {
         usize idx = find_slot(k);
         if (idx < cap_ && slots_[idx].psl != EMPTY_PSL) {
@@ -141,6 +209,13 @@ public:
     }
 
     // ── Erase ─────────────────────────────────────────────────────────────────
+
+    /// @brief Removes the entry with key @p k from the map.
+    ///
+    /// Uses backward-shift deletion: the slot is vacated and subsequent entries
+    /// are shifted back one position until a PSL-0 or empty slot is reached.
+    /// @return `true` if the key was found and erased; `false` otherwise.
+    /// @complexity O(1) amortised.
     bool erase(const K& k) noexcept {
         usize idx = find_slot(k);
         if (idx >= cap_ || slots_[idx].psl == EMPTY_PSL) return false;
@@ -166,6 +241,10 @@ public:
     }
 
     // ── Lookup ────────────────────────────────────────────────────────────────
+
+    /// @brief Returns a pointer to the mapped value for @p k, or `none` if absent.
+    /// @return `Optional<V*>` — `has_value()` is true iff the key exists.
+    /// @complexity O(1) expected.
     [[nodiscard]] Optional<V*> find(const K& k) noexcept {
         usize idx = find_slot(k);
         if (idx < cap_ && slots_[idx].psl != EMPTY_PSL)
@@ -173,6 +252,7 @@ public:
         return none_of<V*>();
     }
 
+    /// @brief Const overload of `find`.
     [[nodiscard]] Optional<const V*> find(const K& k) const noexcept {
         usize idx = find_slot(k);
         if (idx < cap_ && slots_[idx].psl != EMPTY_PSL)
@@ -180,12 +260,20 @@ public:
         return none_of<const V*>();
     }
 
+    /// @brief Returns `true` if the map contains an entry with key @p k.
+    /// @complexity O(1) expected.
     [[nodiscard]] bool contains(const K& k) const noexcept {
         usize idx = find_slot(k);
         return idx < cap_ && slots_[idx].psl != EMPTY_PSL;
     }
 
-    // operator[] creates default-constructed V if key absent
+    /// @brief Returns a reference to the value mapped to @p k, inserting a
+    ///        default-constructed value if the key is absent.
+    ///
+    /// Equivalent to `insert(k, V{})` followed by a lookup if @p k is new.
+    /// @param k Key to look up or insert.
+    /// @return Mutable reference to the mapped value.
+    /// @complexity O(1) amortised.
     V& operator[](const K& k) {
         usize idx = find_slot(k);
         if (idx < cap_ && slots_[idx].psl != EMPTY_PSL) return slots_[idx].val();
@@ -193,21 +281,29 @@ public:
         return slots_[find_slot(k)].val();
     }
 
+    /// @brief Removes all entries, resetting to initial capacity.
+    /// @complexity O(n).
     void clear() noexcept { destroy_all(); init_slots(INITIAL_CAP); }
 
     // ── Iterators ─────────────────────────────────────────────────────────────
+
+    /// @brief Returns an iterator to the first occupied entry.
+    /// @complexity O(capacity) worst case to skip empty slots.
     Iterator begin() noexcept {
         Iterator it{slots_, cap_, 0};
         it.advance_to_filled();
         return it;
     }
+    /// @brief Returns a past-the-end iterator.
     Iterator end() noexcept { return {slots_, cap_, cap_}; }
 
+    /// @brief Returns a const iterator to the first occupied entry.
     ConstIterator begin() const noexcept {
         ConstIterator it{slots_, cap_, 0};
         it.advance_to_filled();
         return it;
     }
+    /// @brief Returns a past-the-end const iterator.
     ConstIterator end() const noexcept { return {slots_, cap_, cap_}; }
 
 private:

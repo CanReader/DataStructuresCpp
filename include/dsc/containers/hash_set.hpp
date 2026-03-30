@@ -12,6 +12,20 @@ namespace dsc {
 // Robin Hood open-addressing hash set.
 // Same design as HashMap; stores only keys (no associated value).
 // See hash_map.hpp for algorithm rationale.
+
+/// @brief Open-addressing hash set using Robin Hood hashing with backward-shift deletion.
+///
+/// Stores only keys (no associated values). Uses the same Robin Hood algorithm
+/// as `HashMap`: each slot tracks a probe sequence length (PSL), incoming
+/// inserts displace shorter-PSL residents, and deletions use backward-shift
+/// rather than tombstones.
+///
+/// Capacity is always a power of two — modulo wrapping is a single bitmask.
+/// Maximum load factor is 87.5%; a capacity-doubling rehash occurs automatically.
+///
+/// @tparam K  Key type. Must be hashable by @p H and equality-comparable by @p Eq.
+/// @tparam H  Hash functor. Defaults to `Hash<K>` (FNV-1a + Fibonacci mixing).
+/// @tparam Eq Equality functor. Defaults to `KeyEqual<K>` (operator==).
 template<typename K,
          typename H  = Hash<K>,
          typename Eq = KeyEqual<K>>
@@ -29,32 +43,65 @@ class HashSet {
 
 public:
     // ── Iterator ──────────────────────────────────────────────────────────────
+
+    /// @brief Forward iterator over all keys in the set.
+    ///
+    /// Traverses the flat slot array, skipping empty slots. Iteration order is
+    /// unspecified (depends on hash distribution). Invalidated by any insert or
+    /// rehash operation.
     struct Iterator {
         Slot* slots; usize cap; usize idx;
+
+        /// @brief Advances past empty slots.
         void skip() noexcept { while (idx < cap && slots[idx].psl == EMPTY_PSL) ++idx; }
+
+        /// @brief Dereferences to a const reference to the current key.
         const K& operator*()  const noexcept { return slots[idx].key(); }
+
+        /// @brief Arrow operator to the current key.
         const K* operator->() const noexcept { return &slots[idx].key(); }
+
+        /// @brief Pre-increment. Moves to the next occupied slot.
         Iterator& operator++() noexcept { ++idx; skip(); return *this; }
+        /// @brief Post-increment.
         Iterator  operator++(int) noexcept { auto t = *this; ++(*this); return t; }
         bool operator==(Iterator o) const noexcept { return idx == o.idx; }
         bool operator!=(Iterator o) const noexcept { return idx != o.idx; }
     };
 
     // ── Construction ─────────────────────────────────────────────────────────
+
+    /// @brief Default constructor. Allocates an initial slot array of capacity 8.
+    /// @complexity O(1).
     HashSet() : slots_(nullptr), cap_(0), size_(0) { init_slots(INITIAL_CAP); }
 
+    /// @brief Copy constructor. Deep-copies all keys from @p o.
+    /// @param o Source set to copy from.
+    /// @complexity O(n).
     HashSet(const HashSet& o) : HashSet() { for (const auto& k : o) insert(k); }
 
+    /// @brief Move constructor. Transfers ownership of the slot array from @p o.
+    /// @param o Source set to move from. Left empty after the operation.
+    /// @complexity O(1).
     HashSet(HashSet&& o) noexcept : slots_(o.slots_), cap_(o.cap_), size_(o.size_) {
         o.slots_ = nullptr; o.cap_ = o.size_ = 0;
     }
 
+    /// @brief Destructor. Destroys all keys and releases the allocation.
+    /// @complexity O(n).
     ~HashSet() { destroy_all(); free_slots(); }
 
+    /// @brief Copy-assignment operator. Replaces contents with a copy of @p o.
+    /// @return Reference to `*this`.
+    /// @complexity O(n).
     HashSet& operator=(const HashSet& o) {
         if (this != &o) { HashSet t(o); *this = traits::move(t); }
         return *this;
     }
+
+    /// @brief Move-assignment operator. Transfers ownership from @p o.
+    /// @return Reference to `*this`.
+    /// @complexity O(n) to destroy current keys; O(1) for the transfer.
     HashSet& operator=(HashSet&& o) noexcept {
         if (this != &o) {
             destroy_all(); free_slots();
@@ -65,13 +112,32 @@ public:
     }
 
     // ── Capacity ──────────────────────────────────────────────────────────────
+
+    /// @brief Returns the number of keys currently stored in the set.
+    /// @complexity O(1).
     [[nodiscard]] usize size()  const noexcept { return size_; }
+
+    /// @brief Returns `true` if the set contains no keys.
+    /// @complexity O(1).
     [[nodiscard]] bool  empty() const noexcept { return size_ == 0; }
 
     // ── Modifiers ─────────────────────────────────────────────────────────────
+
+    /// @brief Inserts @p k into the set if not already present.
+    /// @return `true` if the key was newly inserted; `false` if it already existed.
+    /// @note Triggers a capacity-doubling rehash when the load factor exceeds 87.5%.
+    /// @complexity O(1) amortised.
     bool insert(const K& k) { return emplace_impl(k); }
+
+    /// @overload Move-inserts the key.
     bool insert(K&& k)      { return emplace_impl(traits::move(k)); }
 
+    /// @brief Removes @p k from the set.
+    ///
+    /// Uses backward-shift deletion: no tombstones are left behind, keeping
+    /// subsequent lookups fast.
+    /// @return `true` if the key was found and removed; `false` otherwise.
+    /// @complexity O(1) amortised.
     bool erase(const K& k) noexcept {
         usize idx = find_slot(k);
         if (idx >= cap_ || slots_[idx].psl == EMPTY_PSL) return false;
@@ -91,19 +157,30 @@ public:
         return true;
     }
 
+    /// @brief Removes all keys, resetting to initial capacity.
+    /// @complexity O(n).
     void clear() noexcept { destroy_all(); init_slots(INITIAL_CAP); }
 
     // ── Lookup ────────────────────────────────────────────────────────────────
+
+    /// @brief Returns `true` if @p k is present in the set.
+    /// @complexity O(1) expected.
     [[nodiscard]] bool contains(const K& k) const noexcept {
         usize idx = find_slot(k);
         return idx < cap_ && slots_[idx].psl != EMPTY_PSL;
     }
 
     // ── Iterators ─────────────────────────────────────────────────────────────
+
+    /// @brief Returns an iterator to the first key in the set.
+    /// @complexity O(capacity) worst case to skip empty slots.
     Iterator begin() noexcept { Iterator it{slots_, cap_, 0}; it.skip(); return it; }
+    /// @brief Returns a past-the-end iterator.
     Iterator end()   noexcept { return {slots_, cap_, cap_}; }
 
+    /// @brief Returns a const iterator to the first key in the set.
     Iterator begin() const noexcept { Iterator it{slots_, cap_, 0}; it.skip(); return it; }
+    /// @brief Returns a past-the-end const iterator.
     Iterator end()   const noexcept { return {slots_, cap_, cap_}; }
 
 private:
