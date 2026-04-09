@@ -46,7 +46,7 @@ static void print_int(long long v) noexcept {
 }
 
 static void print_str(const char* s) noexcept {
-    usize len = 0;
+    dsc::usize len = 0;
     while (s[len]) ++len;
 #if defined(__linux__)
     __asm__ volatile("syscall" : : "a"(1), "D"(1), "S"(s), "d"(len) : "rcx","r11","memory");

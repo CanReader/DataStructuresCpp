@@ -39,3 +39,7 @@
 #include "algorithms/string.hpp"
 #include "algorithms/math.hpp"
 #include "algorithms/sequence.hpp"
+#include "algorithms/geometry.hpp"
+#include "algorithms/dynamic_programming.hpp"
+#include "algorithms/bitwise.hpp"
+#include "algorithms/utilities.hpp"
