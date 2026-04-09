@@ -4,6 +4,7 @@
 #include "../core/traits.hpp"
 #include "../containers/array.hpp"
 #include "../containers/bitset.hpp"
+#include <initializer_list>
 
 // ── Mathematical algorithms ───────────────────────────────────────────────────
 // Number theory, combinatorics, matrix operations — no math.h needed.
@@ -183,6 +184,30 @@ inline bool is_prime(u64 n) noexcept {
         if (composite) return false;
     }
     return true;
+}
+
+// ── Chinese Remainder Theorem ─────────────────────────────────────────────────
+// Solves system of congruences x ≡ a_i mod m_i, where m_i are pairwise coprime.
+/// @brief Solves the system of congruences using Chinese Remainder Theorem.
+/// @param a Array of remainders.
+/// @param m Array of moduli (must be pairwise coprime).
+/// @return Optional solution x if exists, none otherwise.
+/// @pre m_i are pairwise coprime.
+/// @complexity O(n log M) where n is number of congruences, M is product of moduli.
+template<typename T>
+[[nodiscard]] Optional<T> chinese_remainder(const Array<T>& a, const Array<T>& m) noexcept {
+    usize n = a.size();
+    if (n != m.size()) return none_of<T>();
+    T M = T(1);
+    for (const auto& mi : m) M *= mi;
+    T x = T(0);
+    for (usize i = 0; i < n; ++i) {
+        T Mi = M / m[i];
+        T inv = mod_inverse(Mi, m[i]);
+        if (!inv) return none_of<T>();
+        x = (x + a[i] * Mi % M * inv) % M;
+    }
+    return some(x);
 }
 
 // ── Integer square root ───────────────────────────────────────────────────────

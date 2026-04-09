@@ -299,4 +299,88 @@ void radix_sort(T* first, T* last) {
     ::operator delete(buf);
 }
 
+// ── Quicksort ────────────────────────────────────────────────────────────────
+// Fast O(n log n) average-case sorting using partitioning.
+/// @brief Sorts the range [first, last) using quicksort.
+/// @tparam T Element type.
+/// @tparam Cmp Comparator type. Defaults to `Less` (ascending order).
+/// @param first Pointer to the first element of the range.
+/// @param last Pointer to one past the last element of the range.
+/// @param cmp Comparator functor.
+/// @complexity O(n log n) average-case, O(n²) worst-case.
+/// @note Not stable. Uses recursion; may cause stack overflow for large n.
+template<typename T, typename Cmp = Less>
+void quicksort(T* first, T* last, Cmp cmp = {}) noexcept {
+    if (first >= last - 1) return;
+    // Lomuto partition
+    T pivot = traits::move(*(last - 1));
+    T* i = first - 1;
+    for (T* j = first; j < last - 1; ++j) {
+        if (!cmp(*j, pivot)) {
+            ++i;
+            traits::swap(*i, *j);
+        }
+    }
+    traits::swap(*(i + 1), *(last - 1));
+    T* p = i + 1;
+    quicksort(first, p, cmp);
+    quicksort(p + 1, last, cmp);
+}
+
+// ── Selection sort ────────────────────────────────────────────────────────────
+// Simple O(n²) sorting by repeatedly finding the minimum.
+/// @brief Sorts the range [first, last) using selection sort.
+/// @tparam T Element type.
+/// @tparam Cmp Comparator type. Defaults to `Less` (ascending order).
+/// @param first Pointer to the first element of the range.
+/// @param last Pointer to one past the last element of the range.
+/// @param cmp Comparator functor.
+/// @complexity O(n²) worst-case.
+/// @note Not stable. Simple and in-place.
+template<typename T, typename Cmp = Less>
+void selection_sort(T* first, T* last, Cmp cmp = {}) noexcept {
+    for (T* i = first; i < last - 1; ++i) {
+        T* min = i;
+        for (T* j = i + 1; j < last; ++j) {
+            if (cmp(*j, *min)) min = j;
+        }
+        if (min != i) traits::swap(*i, *min);
+    }
+}
+
+// ── Counting sort ─────────────────────────────────────────────────────────────
+// O(n + k) for small integer ranges.
+/// @brief Sorts the range [first, last) using counting sort.
+/// @tparam T Element type (must be integral).
+/// @tparam Cmp Comparator type. Defaults to `Less` (ascending order).
+/// @param first Pointer to the first element of the range.
+/// @param last Pointer to one past the last element of the range.
+/// @param min_val Minimum possible value in the range.
+/// @param max_val Maximum possible value in the range.
+/// @param cmp Comparator functor.
+/// @complexity O(n + (max_val - min_val)).
+/// @note Stable. Requires knowledge of value range.
+template<typename T, typename Cmp = Less>
+void counting_sort(T* first, T* last, T min_val, T max_val, Cmp cmp = {}) noexcept {
+    usize n = static_cast<usize>(last - first);
+    usize range = static_cast<usize>(max_val - min_val + 1);
+    usize* count = static_cast<usize*>(::operator new(range * sizeof(usize)));
+    T* output = static_cast<T*>(::operator new(n * sizeof(T)));
+
+    for (usize i = 0; i < range; ++i) count[i] = 0;
+    for (usize i = 0; i < n; ++i) ++count[static_cast<usize>(first[i] - min_val)];
+
+    for (usize i = 1; i < range; ++i) count[i] += count[i - 1];
+
+    for (isize i = n - 1; i >= 0; --i) {
+        usize idx = static_cast<usize>(first[i] - min_val);
+        output[--count[idx]] = first[i];
+    }
+
+    for (usize i = 0; i < n; ++i) first[i] = output[i];
+
+    ::operator delete(count);
+    ::operator delete(output);
+}
+
 } // namespace dsc

@@ -181,7 +181,7 @@ Array<W> dijkstra(const Array<Array<WeightedEdge<W>>>& graph, usize src) {
     dist[src] = W{};
 
     struct PQ_Node { W dist; usize v; };
-    MinHeap<PQ_Node, decltype([](const PQ_Node& a, const PQ_Node& b){ return a.dist > b.dist; })> pq;
+    PriorityQueue<PQ_Node, decltype([](const PQ_Node& a, const PQ_Node& b){ return a.dist > b.dist; })> pq;
     pq.push({W{}, src});
 
     while (!pq.empty()) {
@@ -217,7 +217,7 @@ DijkstraResult<W> dijkstra_parents(const Array<Array<WeightedEdge<W>>>& graph, u
     dist[src] = W{}; parent[src] = src;
 
     struct PQ_Node { W dist; usize v; };
-    MinHeap<PQ_Node, decltype([](const PQ_Node& a, const PQ_Node& b){ return a.dist > b.dist; })> pq;
+    PriorityQueue<PQ_Node, decltype([](const PQ_Node& a, const PQ_Node& b){ return a.dist > b.dist; })> pq;
     pq.push({W{}, src});
 
     while (!pq.empty()) {
@@ -337,7 +337,7 @@ Array<UndirectedEdge<W>> prim(const Array<Array<WeightedEdge<W>>>& graph) {
     key[0] = W{};
 
     struct PQNode { W key; usize v; };
-    MinHeap<PQNode, decltype([](const PQNode& a, const PQNode& b){ return a.key > b.key; })> pq;
+    PriorityQueue<PQNode, decltype([](const PQNode& a, const PQNode& b){ return a.key > b.key; })> pq;
     pq.push({W{}, 0});
 
     Array<UndirectedEdge<W>> mst;

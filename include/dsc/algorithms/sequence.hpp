@@ -42,24 +42,24 @@ template<typename T>
 /// @param arr Sorted input array.
 /// @param n Array size.
 /// @param target Target sum.
-/// @return Optional containing indices [i, j] where arr[i] + arr[j] == target, or none.
+/// @return Optional containing a pair of indices where arr[i] + arr[j] == target, or none.
 /// @pre Array must be sorted in ascending order.
 /// @complexity O(n).
 template<typename T>
-[[nodiscard]] Optional<usize[2]> two_sum_sorted(const T* arr, usize n, T target) noexcept {
+struct IndexPair { usize first; usize second; };
+
+template<typename T>
+[[nodiscard]] Optional<IndexPair<T>> two_sum_sorted(const T* arr, usize n, T target) noexcept {
     usize l = 0, r = n - 1;
     while (l < r) {
         T s = arr[l] + arr[r];
         if (s == target) {
-            // Return via pair struct instead of C array (can't return C arrays)
-            static usize res[2];
-            res[0] = l; res[1] = r;
-            return some(res);
+            return some(IndexPair<T>{l, r});
         }
         else if (s < target) ++l;
         else                  --r;
     }
-    return none_of<usize[2]>();
+    return none_of<IndexPair<T>>();
 }
 
 // ── Sliding window maximum ────────────────────────────────────────────────────

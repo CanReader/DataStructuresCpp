@@ -310,4 +310,82 @@ inline Array<usize> suffix_array(const char* s, usize n) {
     return sa;
 }
 
+// ── Aho-Corasick automaton ────────────────────────────────────────────────────
+// Multi-pattern string matching using a trie with failure links.
+/// @brief Aho-Corasick automaton for multi-pattern string matching.
+/// @tparam AlphabetSize Size of the alphabet (e.g., 256 for ASCII).
+template<usize AlphabetSize = 256>
+class AhoCorasick {
+    struct Node {
+        usize fail = 0;
+        Array<usize> output;
+        usize next[AlphabetSize] = {};
+    };
+    Array<Node> nodes;
+    usize root = 0;
+
+public:
+    /// @brief Constructs an empty Aho-Corasick automaton.
+    AhoCorasick() { nodes.push_back(Node{}); }
+
+    /// @brief Adds a pattern to the automaton.
+    /// @param pattern Pointer to the pattern string.
+    /// @param m Length of the pattern.
+    /// @param id Unique ID for the pattern.
+    void add_pattern(const char* pattern, usize m, usize id) {
+        usize node = root;
+        for (usize i = 0; i < m; ++i) {
+            u8 c = static_cast<u8>(pattern[i]);
+            if (!nodes[node].next[c]) {
+                nodes[node].next[c] = nodes.size();
+                nodes.push_back(Node{});
+            }
+            node = nodes[node].next[c];
+        }
+        nodes[node].output.push_back(id);
+    }
+
+    /// @brief Builds the failure links and output links.
+    void build() {
+        Array<usize> q;
+        for (usize c = 0; c < AlphabetSize; ++c) {
+            if (nodes[root].next[c]) {
+                usize child = nodes[root].next[c];
+                nodes[child].fail = root;
+                q.push_back(child);
+            }
+        }
+        while (!q.empty()) {
+            usize curr = q.front(); q.erase(q.begin());
+            for (usize c = 0; c < AlphabetSize; ++c) {
+                if (nodes[curr].next[c]) {
+                    usize child = nodes[curr].next[c];
+                    usize fail = nodes[curr].fail;
+                    while (fail && !nodes[fail].next[c]) fail = nodes[fail].fail;
+                    if (nodes[fail].next[c]) fail = nodes[fail].next[c];
+                    nodes[child].fail = fail;
+                    // Merge outputs
+                    for (usize id : nodes[fail].output) nodes[child].output.push_back(id);
+                    q.push_back(child);
+                }
+            }
+        }
+    }
+
+    /// @brief Searches for all patterns in the text.
+    /// @param text Pointer to the text string.
+    /// @param n Length of the text.
+    /// @param callback Function called for each match: (position, pattern_id).
+    template<typename F>
+    void search(const char* text, usize n, F callback) const {
+        usize node = root;
+        for (usize i = 0; i < n; ++i) {
+            u8 c = static_cast<u8>(text[i]);
+            while (node && !nodes[node].next[c]) node = nodes[node].fail;
+            if (nodes[node].next[c]) node = nodes[node].next[c];
+            for (usize id : nodes[node].output) callback(i, id);
+        }
+    }
+};
+
 } // namespace dsc

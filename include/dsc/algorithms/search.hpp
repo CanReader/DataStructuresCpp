@@ -25,6 +25,7 @@ namespace dsc {
 /// @param val Value to search for.
 /// @return Pointer to the first element equal to val, or last if not found.
 /// @complexity O(n).
+template<typename T, typename U>
 [[nodiscard]] T* linear_search(T* first, T* last, const U& val) noexcept {
     while (first != last) {
         if (*first == val) return first;
@@ -52,7 +53,6 @@ template<typename T, typename U>
 // ── Binary search ─────────────────────────────────────────────────────────────
 // Precondition: [first, last) sorted ascending by cmp.
 // Returns pointer to element equal to val, or nullptr if absent.
-struct Less { template<typename T> bool operator()(const T& a, const T& b) const noexcept { return a < b; } };
 
 /// @brief Performs binary search for val in the sorted range [first, last).
 /// @tparam T Element type.
@@ -201,6 +201,75 @@ template<typename T>
         else             hi = mid - 1;
     }
     return last;  // not found
+}
+
+// ── Ternary search ───────────────────────────────────────────────────────────
+// Searches for maximum in unimodal function over [left, right].
+/// @brief Performs ternary search to find the maximum of a unimodal function.
+/// @tparam T Index type.
+/// @tparam F Function type that takes T and returns comparable value.
+/// @param left Left bound of the search range.
+/// @param right Right bound of the search range.
+/// @param func Unimodal function to maximize.
+/// @return The index where the function is maximized.
+/// @pre The function must be unimodal (increasing then decreasing).
+/// @complexity O(log n).
+/// @note For discrete unimodal functions.
+template<typename T, typename F>
+[[nodiscard]] T ternary_search(T left, T right, F func) noexcept {
+    while (right - left > 2) {
+        T mid1 = left + (right - left) / 3;
+        T mid2 = right - (right - left) / 3;
+        if (func(mid1) < func(mid2)) {
+            left = mid1;
+        } else {
+            right = mid2;
+        }
+    }
+    // Linear search in the small range
+    T max_idx = left;
+    auto max_val = func(left);
+    for (T i = left + 1; i <= right; ++i) {
+        auto val = func(i);
+        if (val > max_val) {
+            max_val = val;
+            max_idx = i;
+        }
+    }
+    return max_idx;
+}
+
+// ── Exponential search ────────────────────────────────────────────────────────
+// Finds element in unbounded sorted array.
+/// @brief Performs exponential search for val in a sorted unbounded array.
+/// @tparam T Element type.
+/// @tparam U Value type.
+/// @param first Pointer to the start of the array.
+/// @param val Value to search for.
+/// @return Pointer to the element equal to val, or nullptr if not found.
+/// @pre The array must be sorted in ascending order and unbounded.
+/// @complexity O(log n).
+/// @note Assumes the array is sorted and can be accessed beyond bounds (but will stop).
+template<typename T, typename U>
+[[nodiscard]] T* exponential_search(T* first, const U& val) noexcept {
+    if (*first == val) return first;
+    usize i = 1;
+    while (true) {
+        T* p = first + i;
+        if (*p == val) return p;
+        if (*p > val) break;
+        i *= 2;
+    }
+    // Now binary search in [first + i/2, first + i)
+    T* lo = first + i / 2;
+    T* hi = first + i - 1;
+    while (lo <= hi) {
+        T* mid = lo + (hi - lo) / 2;
+        if (*mid == val) return mid;
+        if (*mid < val) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    return nullptr;
 }
 
 } // namespace dsc
